@@ -1,98 +1,155 @@
 import { ComponentClass } from 'react'
 import Taro, { Component, Config } from '@tarojs/taro'
-import { View, Button, Text } from '@tarojs/components'
-import { connect } from '@tarojs/redux'
+import { View, Input } from '@tarojs/components'
 
-import { add, minus, asyncAdd } from '../../actions/counter'
-
-import './index.styl'
-
-// #region 书写注意
-//
-// 目前 typescript 版本还无法在装饰器模式下将 Props 注入到 Taro.Component 中的 props 属性
-// 需要显示声明 connect 的参数类型并通过 interface 的方式指定 Taro.Component 子类的 props
-// 这样才能完成类型检查和 IDE 的自动提示
-// 使用函数模式则无此限制
-// ref: https://github.com/DefinitelyTyped/DefinitelyTyped/issues/20796
-//
-// #endregion
-
-type PageStateProps = {
-  counter: {
-    num: number
-  }
-}
-
-type PageDispatchProps = {
-  add: () => void
-  dec: () => void
-  asyncAdd: () => any
-}
-
-type PageOwnProps = {}
-
-type PageState = {}
-
-type IProps = PageStateProps & PageDispatchProps & PageOwnProps
-
-interface Home {
-  props: IProps;
-}
-
-@connect(({ counter }) => ({
-  counter
-}), (dispatch) => ({
-  add () {
-    dispatch(add())
-  },
-  dec () {
-    dispatch(minus())
-  },
-  asyncAdd () {
-    dispatch(asyncAdd())
-  }
-}))
 class Home extends Component {
 
-    /**
-   * 指定config的类型声明为: Taro.Config
-   *
-   * 由于 typescript 对于 object 类型推导只能推出 Key 的基本类型
-   * 对于像 navigationBarTextStyle: 'black' 这样的推导出的类型是 string
-   * 提示和声明 navigationBarTextStyle: 'black' | 'white' 类型冲突, 需要显示声明类型
-   */
-    config: Config = {
-    navigationBarTitleText: '首页'
+  /**
+ * 指定config的类型声明为: Taro.Config
+ *
+ * 由于 typescript 对于 object 类型推导只能推出 Key 的基本类型
+ * 对于像 navigationBarTextStyle: 'black' 这样的推导出的类型是 string
+ * 提示和声明 navigationBarTextStyle: 'black' | 'white' 类型冲突, 需要显示声明类型
+ */
+  config: Config = {
+    navigationBarTitleText: '查看'
   }
-
-  componentWillReceiveProps (nextProps) {
+  componentWillReceiveProps(nextProps) {
     console.log(this.props, nextProps)
   }
+  componentDidMount() {
+    Taro.cloud
+      .callFunction({
+        name: 'login',
+      })
+      .then(res => {
+        console.log('用户信息', res)
+      })
+      .catch(console.log)
+    this.getDate()
+  }
 
-  componentWillUnmount () { }
+  componentWillUnmount() {
+    console.log('componentWillUnmount')
+  }
 
-  componentDidShow () { }
+  componentDidShow() { }
 
-  componentDidHide () { }
-
-  render () {
+  componentDidHide() { }
+  getDate() { // 查询数据库
+    const db = Taro.cloud.database()
+    // 查询当前用户所有的 money
+    db.collection('money').where({
+    }).get({
+      success: res => {
+        this.setState({
+          list: res.data
+        })
+      },
+      fail: () => {
+        Taro.showToast({
+          icon: 'none',
+          title: '查询记录失败'
+        })
+      }
+    })
+  }
+  handleClick() { // 添加数据库
+    const db = Taro.cloud.database()
+    db.collection('money').add({
+      data: {
+        name: this.state.name,
+        money: this.state.money
+      },
+      success: () => {
+        // 在返回结果中会包含新创建的记录的 _id
+        Taro.showToast({
+          title: '添加成功',
+        })
+        this.setState({
+          name: '',
+          money: ''
+        })
+        this.getDate()
+      },
+      fail: () => {
+        Taro.showToast({
+          icon: 'none',
+          title: '添加失败'
+        })
+      }
+    })
+  }
+  delId(id) {
+    const db = Taro.cloud.database()
+    db.collection("money").doc(id._id).remove({
+      success: () => {
+        Taro.showToast({
+          icon: 'none',
+          title: '删除成功'
+        })
+        this.getDate()
+      },
+      fail: () => {
+        Taro.showToast({
+          icon: 'none',
+          title: '删除失败'
+        })
+      }
+    })
+  }
+  nameChange(e, value) {
+    if (value === 'name') {
+      this.setState({
+        name: e.target.value
+      })
+    } else if (value === 'money') {
+      this.setState({
+        money: e.target.value
+      })
+    }
+  }
+  state = {
+    name: '',
+    money: '',
+    list: [
+      {
+        name: '',
+        money: ''
+      }
+    ]
+  }
+  render() {
     return (
-      <View className='index'>
-        <Button className='add_btn' onClick={this.props.add}>+</Button>
-        <Button className='dec_btn' onClick={this.props.dec}>-</Button>
-        <Button className='dec_btn' onClick={this.props.asyncAdd}>async</Button>
-        <View><Text>{this.props.counter.num}</Text></View>
-        <View><Text>Hello, World</Text></View>
+      <View className="index">
+        <View className='content'>
+          <View className="title">姓名</View>
+          <View className="title">金额</View>
+          <View className="title">操作</View>
+        </View>
+        {
+          this.state.list.map(function (item, Home) {
+            return <View className='content' key={Home}>
+              <View>{item.name}</View>
+              <View>{item.money}</View>
+              <View onClick={this.delId.bind(this, item)}>删除</View>
+            </View>
+          })
+        }
+        <View className="input" >
+          <View>姓名:</View>
+          <Input type='text' value={this.state.name} onInput={(e) => this.nameChange(e, 'name')} placeholder='请输入姓名'></Input>
+        </View>
+        <View className="input">
+          <View>金额:</View>
+          <Input type='text' value={this.state.money} onInput={(e) => this.nameChange(e, 'money')} placeholder='请输入金额'></Input>
+        </View>
+        <View className="add" onClick={this.handleClick}>添 加</View>
       </View>
     )
   }
 }
 
-// #region 导出注意
-//
-// 经过上面的声明后需要将导出的 Taro.Component 子类修改为子类本身的 props 属性
-// 这样在使用这个子类时 Ts 才不会提示缺少 JSX 类型参数错误
-//
-// #endregion
 
-export default Home as ComponentClass<PageOwnProps, PageState>
+
+export default Home as ComponentClass

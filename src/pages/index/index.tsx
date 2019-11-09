@@ -1,7 +1,6 @@
 import { ComponentClass } from 'react'
 import Taro, { Component, Config } from '@tarojs/taro'
 import { View, Input } from '@tarojs/components'
-import './index.styl'
 
 class Index extends Component {
 
