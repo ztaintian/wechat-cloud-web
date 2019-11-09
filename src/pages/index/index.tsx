@@ -1,73 +1,24 @@
 import { ComponentClass } from 'react'
 import Taro, { Component, Config } from '@tarojs/taro'
-import { View, Button, Text } from '@tarojs/components'
-import { connect } from '@tarojs/redux'
-
-import { add, minus, asyncAdd } from '../../actions/counter'
-
+import { View, Input } from '@tarojs/components'
 import './index.styl'
 
-// #region 书写注意
-//
-// 目前 typescript 版本还无法在装饰器模式下将 Props 注入到 Taro.Component 中的 props 属性
-// 需要显示声明 connect 的参数类型并通过 interface 的方式指定 Taro.Component 子类的 props
-// 这样才能完成类型检查和 IDE 的自动提示
-// 使用函数模式则无此限制
-// ref: https://github.com/DefinitelyTyped/DefinitelyTyped/issues/20796
-//
-// #endregion
-
-type PageStateProps = {
-  counter: {
-    num: number
-  }
-}
-
-type PageDispatchProps = {
-  add: () => void
-  dec: () => void
-  asyncAdd: () => any
-}
-
-type PageOwnProps = {}
-
-type PageState = {}
-
-type IProps = PageStateProps & PageDispatchProps & PageOwnProps
-
-interface Index {
-  props: IProps;
-}
-
-@connect(({ counter }) => ({
-  counter
-}), (dispatch) => ({
-  add () {
-    dispatch(add())
-  },
-  dec () {
-    dispatch(minus())
-  },
-  asyncAdd () {
-    dispatch(asyncAdd())
-  }
-}))
 class Index extends Component {
 
-    /**
-   * 指定config的类型声明为: Taro.Config
-   *
-   * 由于 typescript 对于 object 类型推导只能推出 Key 的基本类型
-   * 对于像 navigationBarTextStyle: 'black' 这样的推导出的类型是 string
-   * 提示和声明 navigationBarTextStyle: 'black' | 'white' 类型冲突, 需要显示声明类型
-   */
-    config: Config = {
-      navigationBarTitleText: '查看'
-    }
-  componentWillReceiveProps (nextProps) {
+  /**
+ * 指定config的类型声明为: Taro.Config
+ *
+ * 由于 typescript 对于 object 类型推导只能推出 Key 的基本类型
+ * 对于像 navigationBarTextStyle: 'black' 这样的推导出的类型是 string
+ * 提示和声明 navigationBarTextStyle: 'black' | 'white' 类型冲突, 需要显示声明类型
+ */
+  config: Config = {
+    navigationBarTitleText: '查看'
+  }
+  componentWillReceiveProps(nextProps) {
     console.log(this.props, nextProps)
   }
-  componentDidMount () {
+  componentDidMount() {
     Taro.cloud
       .callFunction({
         name: 'login',
@@ -79,87 +30,140 @@ class Index extends Component {
     this.getDate()
   }
 
-  componentWillUnmount () { 
+  componentWillUnmount() {
     console.log('componentWillUnmount')
   }
 
-  componentDidShow () { }
+  componentDidShow() { }
 
-  componentDidHide () { }
-  getDate () { // 查询数据库
+  componentDidHide() { }
+  getDate() { // 查询数据库
     const db = Taro.cloud.database()
     // 查询当前用户所有的 counters
     db.collection('counters').where({
     }).get({
       success: res => {
-        console.log('[数据库] [查询记录] 成功: ', res)
+        this.setState({
+          list: res.data
+        })
       },
-      fail: err => {
+      fail: () => {
         Taro.showToast({
           icon: 'none',
           title: '查询记录失败'
         })
-        console.error('[数据库] [查询记录] 失败：', err)
       }
     })
   }
-  handleClick () { // 添加数据库
+  handleClick() { // 添加数据库
     const db = Taro.cloud.database()
     db.collection('counters').add({
       data: {
-        name: '小天',
-        month: '6/1',
-        age: 18
+        name: this.state.name,
+        sunMonth: this.state.sunMonth,
+        moonMonth: this.state.moonMonth
       },
-      success: res => {
+      success: () => {
         // 在返回结果中会包含新创建的记录的 _id
-        console.log(res)
         Taro.showToast({
-          title: '新增记录成功',
+          title: '添加成功',
         })
-        console.log('[数据库] [新增记录] 成功，记录 _id: ', res._id)
+        this.setState({
+          name: '',
+          moonMonth: ''
+        })
+        this.getDate()
       },
-      fail: err => {
+      fail: () => {
         Taro.showToast({
           icon: 'none',
-          title: '新增记录失败'
+          title: '添加失败'
         })
-        console.error('[数据库] [新增记录] 失败：', err)
       }
-    })  
+    })
+  }
+  delId(id) {
+    const db = Taro.cloud.database()
+    db.collection("counters").doc(id._id).remove({
+      success: () => {
+        Taro.showToast({
+          icon: 'none',
+          title: '删除成功'
+        })
+        this.getDate()
+      },
+      fail: () => {
+        Taro.showToast({
+          icon: 'none',
+          title: '删除失败'
+        })
+      }
+    })
+  }
+  nameChange(e, value) {
+    if (value === 'name') {
+      this.setState({
+        name: e.target.value
+      })
+    } else if (value === 'sun') {
+      this.setState({
+        sunMonth: e.target.value
+      })
+    } else if (value === 'moon') {
+      this.setState({
+        moonMonth: e.target.value
+      })
+    }
   }
   state = {
+    name: '',
+    sunMonth: '',
+    moonMonth: '',
     list: [
       {
-        name: '怀怀',
-        mouth: '6/1'
+        name: '',
+        sunMonth: '',
+        moonMonth: ''
       }
     ]
   }
-  render () {
-    // let items = [{id:1, name:'foo'}, {id:2, name:'bar'}];
+  render() {
     return (
-      <View>
+      <View className="index">
+        <View className='content'>
+          <View className="title">姓名</View>
+          <View className="title">生日</View>
+          {/* <View>阳历</View> */}
+          <View className="title">操作</View>
+        </View>
         {
           this.state.list.map(function (item, index) {
-            return <View className='index' key={index}>
-                <View>{item.name}</View>
-                <View>{item.mouth}</View>
-              </View>
-                   
+            return <View className='content' key={index}>
+              <View>{item.name}</View>
+              {/* <View>{item.sunMonth}</View> */}
+              <View>{item.moonMonth}</View>
+              <View onClick={this.delId.bind(this, item)}>删除</View>
+            </View>
           })
         }
-        <View onClick={this.handleClick}>增加</View>
+        <View className="input" >
+          <View>姓名:</View>
+          <Input type='text' value={this.state.name} onInput={(e) => this.nameChange(e, 'name')} placeholder='请输入姓名'></Input>
+        </View>
+        {/* <View className="input">
+          <View>生日:</View>
+          <Input type='text' value={this.state.sunMonth} onInput={(e) => this.nameChange(e, 'sun')} placeholder='请输入阳历生日'></Input>
+        </View> */}
+        <View className="input">
+          <View>生日:</View>
+          <Input type='text' value={this.state.moonMonth} onInput={(e) => this.nameChange(e, 'moon')} placeholder='请输入阴历生日'></Input>
+        </View>
+        <View className="add" onClick={this.handleClick}>添 加</View>
       </View>
     )
   }
 }
 
-// #region 导出注意
-//
-// 经过上面的声明后需要将导出的 Taro.Component 子类修改为子类本身的 props 属性
-// 这样在使用这个子类时 Ts 才不会提示缺少 JSX 类型参数错误
-//
-// #endregion
 
-export default Index as ComponentClass<PageOwnProps, PageState>
+
+export default Index as ComponentClass

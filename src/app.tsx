@@ -44,13 +44,13 @@ class App extends Component {
           'iconPath': 'static/home.png',
           'selectedIconPath': 'static/home_select.png',
           'pagePath': 'pages/index/index',
-          'text': '查看'  
+          'text': '生日'  
         },
         {
           'iconPath': 'static/add.png',
           'selectedIconPath': 'static/add_select.png',
           'pagePath': 'pages/home/index',
-          'text': '新增'  
+          'text': '礼金'  
         }
       ]  
     }
